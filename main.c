@@ -128,7 +128,7 @@ void readIntoBuffer(InputBuffer* inputBuffer) {
 void freeInputBuffer(InputBuffer* inputBuffer) {
     if(inputBuffer->buffer != NULL) {
         printf("Free up memory %p\n", inputBuffer->buffer);
-        (inputBuffer->buffer);
+        free(inputBuffer->buffer);
     }
     free(inputBuffer);
 }
