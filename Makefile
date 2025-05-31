@@ -13,6 +13,6 @@ main.o: main.c
 # Intentioanlly added as prerequisite to .PHONY target to let make know that
 # this rule must be executed even if a target file of name clean exists.
 clean:
-	-rm -R target
+	-rm -R target main.o
 
 .PHONY: clean

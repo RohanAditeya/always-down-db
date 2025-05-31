@@ -3,6 +3,25 @@
 #include<string.h>
 #include<stdbool.h>
 
+typedef enum {
+    META_COMMAND_SUCCESS,
+    META_COMMAND_UNRECOGNIZED_COMMAND
+} MetaCommandResult;
+
+typedef enum {
+    PREPARE_SUCCESS, 
+    PREPARE_UNRECOGNIZED_STATEMENT
+} PrepareResult;
+
+typedef enum {
+    STATEMENT_INSERT,
+    STATEMENT_SELECT
+} StatementType;
+
+typedef struct {
+    StatementType type;
+} Statement;
+
 typedef struct {
     char* buffer;
     int bufferLength;
@@ -13,6 +32,9 @@ InputBuffer* createInputBuffer(void);
 void readIntoBuffer(InputBuffer* inputBuffer);
 void freeInputBuffer(InputBuffer* inputBuffer);
 void reallocOrFreeAndExitWithFailure(InputBuffer** ptr, size_t memorySize);
+MetaCommandResult doMetaCommand(InputBuffer* inputBuffer);
+PrepareResult prepareStatement(InputBuffer* inputBuffer, Statement* statement);
+void executeStatement(Statement* statement);
 /*
     Main function for now runs a REPL loop that exits when command "exit" is entered.
     Prints "Invalid command" otherwise and waits for next command from the user.
@@ -22,11 +44,30 @@ int main(void) {
     while(true) {
         printDbPrompt();
         readIntoBuffer(commandBuffer);
-        if(strcmp(commandBuffer->buffer, "exit") == 0) {
-            freeInputBuffer(commandBuffer);
-            exit(EXIT_SUCCESS);
-        } else
-            printf("Invalid command\n");
+        // check and execute if input is meta command
+        if(commandBuffer->buffer[0] == '.') {
+            switch(doMetaCommand(commandBuffer)) {
+                case META_COMMAND_SUCCESS:
+                    continue;
+                case META_COMMAND_UNRECOGNIZED_COMMAND:
+                    printf("Unrecognized meta command %s\n", commandBuffer->buffer);
+                    continue;
+            }
+        }
+        // prepare statement
+        Statement* newStatament = malloc(sizeof(Statement));
+        switch(prepareStatement(commandBuffer, newStatament)) {
+            case PREPARE_SUCCESS:
+                break;
+            case PREPARE_UNRECOGNIZED_STATEMENT:
+                printf("Unrecognized statement %s\n", commandBuffer->buffer);
+                free(newStatament);
+                continue;
+        }
+        // execute statement
+        executeStatement(newStatament);
+        // free statement
+        free(newStatament);
     }
 }
 
@@ -101,5 +142,45 @@ void reallocOrFreeAndExitWithFailure(InputBuffer** ptr, size_t memorySize) {
     if(*ptr == NULL) {
         freeInputBuffer(*ptr);
         exit(EXIT_FAILURE);
+    }
+}
+
+/*
+    Method to process meta-commands
+*/
+MetaCommandResult doMetaCommand(InputBuffer* inputBuffer) {
+    if(strcmp(inputBuffer->buffer, ".exit") == 0) {
+        freeInputBuffer(inputBuffer);
+        exit(EXIT_SUCCESS);
+    }
+    else
+        return META_COMMAND_UNRECOGNIZED_COMMAND;
+}
+
+/*
+    Prepare a statement object for parsing by the virtual machine
+*/
+PrepareResult prepareStatement(InputBuffer* inputBuffer, Statement* statement) {
+    if(strncmp(inputBuffer->buffer, "insert", 6) == 0) {
+        statement->type = STATEMENT_INSERT;
+        return PREPARE_SUCCESS;
+    } else if(strncmp(inputBuffer->buffer, "select", 6) == 0) {
+        statement->type = STATEMENT_SELECT;
+        return PREPARE_SUCCESS;
+    }
+    return PREPARE_UNRECOGNIZED_STATEMENT;
+}
+
+/*
+    Method to execute the statement
+*/
+void executeStatement(Statement* statement) {
+    switch(statement->type) {
+        case STATEMENT_INSERT:
+            printf("This is where we do an insert operation\n");
+            break;
+        case STATEMENT_SELECT:
+            printf("This is where we do a select operation\n");
+            break;
     }
 }
